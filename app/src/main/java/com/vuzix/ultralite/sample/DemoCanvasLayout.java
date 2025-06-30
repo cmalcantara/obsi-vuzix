@@ -24,6 +24,40 @@ import com.vuzix.ultralite.UltraliteSDK;
  */
 public class DemoCanvasLayout {
 
+    /**
+     * Switches to a plain canvas and renders the given text at the top-left corner.
+     */
+
+    private static int currentTextId = -1; // Initialize to an invalid ID
+    public static void runText(Context context, MainActivity.DemoActivityViewModel demoActivityViewModel, UltraliteSDK ultralite, String textToDisplay) throws MainActivity.Stop {
+        Log.d("DemoCanvasLayout", "Displaying text: " + textToDisplay);
+        showText(context, demoActivityViewModel, ultralite, textToDisplay);
+    }
+
+    private static void showText(Context context, MainActivity.DemoActivityViewModel demoActivityViewModel, UltraliteSDK ultralite, String textToDisplay) throws MainActivity.Stop {
+        // Note, the caller already has requested control, and is observing the state of the glasses
+        ultralite.setLayout(Layout.CANVAS, 0, true);
+
+        if (currentTextId != -1) {
+            ultralite.getCanvas().removeText(currentTextId);
+            currentTextId = -1;
+        }
+        currentTextId = ultralite.getCanvas().createText(textToDisplay, TextAlignment.AUTO, UltraliteColor.WHITE, Anchor.CENTER, 0, 0, 640, -1, TextWrapMode.WRAP, true);
+        if (currentTextId == -1) {
+            Log.e("DemoCanvasLayout", "Error creating text on canvas.");
+        }
+        // In the canvas layout, we always call commit to ensure the state of the glasses matches
+        // all the previous commands we have sent. We can change multiple elements before calling
+        // commit() a single time. Certain changes may take effect without the commit(), but calling
+        // this guarantees the state of the glasses will match.
+
+        // Please note this simple example is not requesting an acknowledgement from the glasses
+        // which would be critical for synchronizing a phone display to the glasses display.
+        ultralite.getCanvas().commit();
+        //demoActivityViewModel.pause(5000);
+    }
+
+    /*
     public static void runDemo(Context context, MainActivity.DemoActivityViewModel demoActivityViewModel, UltraliteSDK ultralite) throws MainActivity.Stop {
         demoTextFields(context, demoActivityViewModel, ultralite);
         demoImages(context, demoActivityViewModel, ultralite);
@@ -188,4 +222,6 @@ public class DemoCanvasLayout {
         ultralite.getCanvas().commit(() -> Log.d("MainActivity", "full screen image commit is done!"));
         demoActivityViewModel.pause(5000);
     }
+    */
+
 }

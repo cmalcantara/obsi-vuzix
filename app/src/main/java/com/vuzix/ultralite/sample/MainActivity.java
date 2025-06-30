@@ -8,8 +8,10 @@ import android.os.Handler;
 import android.os.Looper;
 import android.os.SystemClock;
 import android.widget.Button;
+import android.widget.EditText;
 import android.widget.ImageView;
 import android.widget.TextView;
+import android.widget.SeekBar;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
@@ -45,8 +47,12 @@ public class MainActivity extends AppCompatActivity {
         TextView nameTextView = findViewById(R.id.name);
         ImageView connectedImageView = findViewById(R.id.connected);
         ImageView controlledImageView = findViewById(R.id.controlled);
-        Button demoButton = findViewById(R.id.run_demo);
-        Button notificationButton = findViewById(R.id.send_notification);
+
+        //MY EDIT
+        EditText textInput = (EditText) findViewById(R.id.textBox);
+        Button displayButton = findViewById(R.id.displayTextButton);
+        Button clearButton = findViewById(R.id.clearTextButton);
+        SeekBar brightnessSeekBar = findViewById(R.id.brightnessSeekBar);
 
         // Get the instance of the SDK
         UltraliteSDK ultralite = UltraliteSDK.get(this);
@@ -65,6 +71,10 @@ public class MainActivity extends AppCompatActivity {
             connectedImageView.setImageResource(connected ? R.drawable.ic_check_24 : R.drawable.ic_close_24);
             demoButton.setEnabled(connected);
             notificationButton.setEnabled(connected);
+
+            //MY EDIT
+            displayButton.setEnabled(connected);
+            clearButton.setEnabled(connected);
         });
 
         ultralite.getControlledByMe().observe(this, controlled -> {
@@ -90,7 +100,15 @@ public class MainActivity extends AppCompatActivity {
         // Now set the click listeners to kick-off the two demos
         demoButton.setOnClickListener(v -> model.runDemo());
         notificationButton.setOnClickListener(v -> sendSampleNotification() );
+
+        displayButton.setOnClickListener(v -> {
+            String messageToDisplay = textInput.getText().toString();
+            model.displayText(messageToDisplay);
+        });
+        clearButton.setOnClickListener(v -> ultralite.releaseControl());
+
     }
+
 
     /**
      * Sending a notification is by far the simplest mechanism to put content on the glasses.
@@ -141,35 +159,34 @@ public class MainActivity extends AppCompatActivity {
         // We will demonstrate the glasses functionality from a single worker thread. Typically
         // an application will have other logic that drives the UI, and the Z100 output will be
         // driven by that.
-        private void runDemo() {
+
+        // MY EDITS
+        private void displayText(String text) {
             if (haveControlOfGlasses) {
-                startDemoThread();
+                startDisplayText(text);
             } else {
+                pendingTextToDisplay = text;
                 ultralite.requestControl();
             }
         }
 
-        private void startDemoThread() {
+        // You'll need to store the text if control isn't immediately available
+        private String pendingTextToDisplay = null;
+
+        private void startDisplayText(String textToDisplay) {
+
             new Thread(() -> {
-                // Always be sure we have control before any drawing starts
                 if(haveControlOfGlasses) {
                     running.postValue(true);
                     try {
-                        DemoCanvasLayout.runDemo(getApplication(), this, ultralite);
-                        DemoScrollAutoScroller.runDemo(getApplication(), this, ultralite);
-                        DemoScrollLiveText.runDemo(getApplication(), this, ultralite);
-                        DemoScrollNative.runDemo(getApplication(), this, ultralite);
-                        DemoTapInput.runDemo(getApplication(), this, ultralite);
+                        DemoCanvasLayout.runText(getApplication(), this, ultralite, textToDisplay);
 
-                        // Always release control when finished drawing to the glasses
-                        ultralite.releaseControl();
-                        ultralite.sendNotification("Demo Success", "The demo is over");
                     } catch (Stop stop) {
                         ultralite.releaseControl(); // Release when aborting, too.
                         if (stop.error) {
-                            ultralite.sendNotification("Demo Error", "An error occurred during the demo");
+                            ultralite.sendNotification("DisplayText Error", "An error occurred.");
                         } else {
-                            ultralite.sendNotification("Demo Control Lost", "The demo lost control of the glasses");
+                            ultralite.sendNotification("DisplayText Lost", "App lost control of the glasses");
                         }
                     }
                     running.postValue(false);
@@ -197,12 +214,16 @@ public class MainActivity extends AppCompatActivity {
             if (controlled) {
                 // We wait to start the demo until the SDK confirms we have received control.
                 haveControlOfGlasses = true;
-                startDemoThread();
+                if (pendingTextToDisplay != null) {
+                    startDisplayText(pendingTextToDisplay);
+                    pendingTextToDisplay = null;
+                }
             } else {
                 // If we later lose control of the glasses we stop the demo. (Your app may choose to
                 // continue running without the glasses UI and wait for them to reconnect to begin,
                 // streaming to them again.).
                 haveControlOfGlasses = false;
+                pendingTextToDisplay = null;
             }
         };
     }

@@ -1,126 +1,158 @@
 <?xml version="1.0" encoding="utf-8"?>
 <ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools"
-    android:orientation="vertical"
     android:layout_width="match_parent"
-    android:layout_height="match_parent">
+    android:layout_height="match_parent"
+    android:orientation="vertical">
 
     <LinearLayout
-        android:orientation="vertical"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
+        android:orientation="vertical"
         android:padding="20dp">
 
         <LinearLayout
-            android:orientation="horizontal"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:gravity="center_vertical"
+            android:orientation="horizontal"
             tools:ignore="UseCompoundDrawables">
 
             <TextView
-                android:text="@string/controller_app_installed"
                 android:layout_width="wrap_content"
-                android:layout_height="wrap_content"/>
+                android:layout_height="wrap_content"
+                android:text="@string/controller_app_installed"
+                android:textColor="@android:color/darker_gray" />
+
             <ImageView
                 android:id="@+id/installed"
-                android:src="@drawable/ic_close_24"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
+                android:src="@drawable/ic_close_24"
                 tools:ignore="ContentDescription" />
         </LinearLayout>
 
         <LinearLayout
-            android:orientation="horizontal"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginTop="5dp"
             android:gravity="center_vertical"
+            android:orientation="horizontal"
             tools:ignore="UseCompoundDrawables">
 
             <TextView
-                android:text="@string/linked_to_glasses"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"/>
-            <ImageView
-                android:id="@+id/linked"
-                android:src="@drawable/ic_close_24"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
+                android:text="@string/linked_to_glasses"
+                android:textColor="@android:color/darker_gray" />
+
+            <ImageView
+                android:id="@+id/linked"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:src="@drawable/ic_close_24"
                 tools:ignore="ContentDescription" />
         </LinearLayout>
 
         <LinearLayout
-            android:orientation="horizontal"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginTop="5dp"
-            android:gravity="center_vertical">
+            android:gravity="center_vertical"
+            android:orientation="horizontal">
 
             <TextView
-                android:text="@string/name"
                 android:layout_width="wrap_content"
-                android:layout_height="wrap_content"/>
+                android:layout_height="wrap_content"
+                android:text="@string/name"
+                android:textColor="@android:color/darker_gray" />
+
             <TextView
                 android:id="@+id/name"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_marginStart="5dp"/>
+                android:layout_marginStart="5dp" />
         </LinearLayout>
 
         <LinearLayout
-            android:orientation="horizontal"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginTop="5dp"
             android:gravity="center_vertical"
+            android:orientation="horizontal"
             tools:ignore="UseCompoundDrawables">
 
             <TextView
-                android:text="@string/glasses_connected"
                 android:layout_width="wrap_content"
-                android:layout_height="wrap_content"/>
+                android:layout_height="wrap_content"
+                android:text="@string/glasses_connected"
+                android:textColor="@android:color/darker_gray" />
+
             <ImageView
                 android:id="@+id/connected"
-                android:src="@drawable/ic_close_24"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
+                android:src="@drawable/ic_close_24"
                 tools:ignore="ContentDescription" />
         </LinearLayout>
 
         <LinearLayout
-            android:orientation="horizontal"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginTop="5dp"
             android:gravity="center_vertical"
+            android:orientation="horizontal"
             tools:ignore="UseCompoundDrawables">
 
             <TextView
-                android:text="@string/glasses_controlled"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"/>
-            <ImageView
-                android:id="@+id/controlled"
-                android:src="@drawable/ic_close_24"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
+                android:text="@string/glasses_controlled"
+                android:textColor="@android:color/darker_gray" />
+
+            <ImageView
+                android:id="@+id/controlled"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:src="@drawable/ic_close_24"
                 tools:ignore="ContentDescription" />
         </LinearLayout>
 
 
-        <Button
-            android:id="@+id/run_demo"
-            android:text="@string/run_demo"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="10dp"/>
+        <EditText
+            android:id="@+id/textBox"
+            android:layout_width="304dp"
+            android:layout_height="159dp"
+            android:ems="10"
+            android:hint="Text To Display"
+            android:inputType="text"
+            android:outlineAmbientShadowColor="@android:color/darker_gray"
+            android:textColor="@android:color/darker_gray" />
 
         <Button
-            android:id="@+id/send_notification"
-            android:text="@string/send_notification"
-            android:layout_width="wrap_content"
+            android:id="@+id/displayTextButton"
+            android:layout_width="184dp"
             android:layout_height="wrap_content"
-            android:layout_marginTop="10dp"/>
+            android:text="Display Text" />
+
+        <Button
+            android:id="@+id/clearTextButton"
+            android:layout_width="188dp"
+            android:layout_height="wrap_content"
+            android:text="Clear Text" />
+
+        <TextView
+            android:id="@+id/textView"
+            android:layout_width="172dp"
+            android:layout_height="wrap_content"
+            android:text="Brightness Slider"
+            android:textColor="@android:color/darker_gray" />
+
+        <SeekBar
+            android:id="@+id/brightnessSeekBar"
+            android:layout_width="match_parent"
+            android:layout_height="43dp"
+            android:layout_marginTop="4dp"
+            android:max="100" />
     </LinearLayout>
 </ScrollView>
