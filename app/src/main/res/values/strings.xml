@@ -6,7 +6,10 @@
     <string name="name">Name:</string>
     <string name="glasses_connected">Glasses connected</string>
     <string name="glasses_controlled">Glasses controlled by us</string>
+    <string name="text_hint">Text to Display</string>
     <string name="run_demo">Run Demo</string>
+    <string name="display_text">Display Text</string>
+    <string name="clear_text">Clear Text</string>
     <string name="send_notification">Send Notification</string>
     <string name="brightness_slider_label">Glasses Brightness</string>
 

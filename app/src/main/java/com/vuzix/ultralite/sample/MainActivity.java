@@ -1,142 +1,100 @@
 package com.vuzix.ultralite.sample;
 
+// Keep your existing imports
 import android.app.Application;
+// import android.content.Context; // No longer needed directly for SharedPreferences here
+// import android.content.SharedPreferences; // No longer needed directly for SharedPreferences here
+// ... other imports ...
 import android.content.Context;
-import android.content.SharedPreferences;
-import android.graphics.drawable.BitmapDrawable;
-import android.os.Bundle;
-import android.os.Handler;
-import android.os.Looper;
-import android.os.SystemClock;
-import android.widget.Button;
-import android.widget.EditText;
-import android.widget.ImageView;
-import android.widget.TextView;
-import android.widget.SeekBar;
+import android.os.Bundle; // Keep
+// Remove View initializations that are now in DisplayFragment
+// import android.widget.Button;
+// import android.widget.EditText;
+// import android.widget.ImageView;
+// import android.widget.TextView;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
-import androidx.core.content.res.ResourcesCompat;
 import androidx.lifecycle.AndroidViewModel;
+import androidx.lifecycle.LiveData;
 import androidx.lifecycle.MutableLiveData;
 import androidx.lifecycle.Observer;
 import androidx.lifecycle.ViewModelProvider;
+import androidx.viewpager2.widget.ViewPager2; // Add this
 
-import com.vuzix.ultralite.LVGLImage;
-import com.vuzix.ultralite.UltraliteSDK;
+import com.google.android.material.tabs.TabLayout; // Add this
+import com.google.android.material.tabs.TabLayoutMediator; // Add this
+import com.vuzix.ultralite.LVGLImage; // Keep
+import com.vuzix.ultralite.UltraliteSDK; // Keep
+// ... other utility imports like Context, ResourcesCompat etc.
 
-/**
- * This class sets up a basic connection to the Z100 glasses using the ultralite SDK
- *
- * The primary role of this class is to monitor the Z100 state, and handle the request and release
- * of control.
- *
- * It also demonstrates sending notifications.
- */
 public class MainActivity extends AppCompatActivity {
+
     protected static final String TAG = MainActivity.class.getSimpleName();
+    // SharedPreferences constants can be moved to DisplayFragment or a common file
 
-    // SharedPreferences constants
-    public static final String PREFS_NAME = "MyPrefsFile";
-    public static final String LAST_INPUT_KEY = "lastInput";
+    private TabLayout tabLayout;
+    private ViewPager2 viewPager;
+    private ViewPagerAdapter viewPagerAdapter;
 
-    private EditText textInput; // Made it a class member to access in listener and onCreate
+    // Your DemoActivityViewModel and other necessary fields remain
+    private DemoActivityViewModel model;
+    // private UltraliteSDK ultralite; // This will be initialized and used in DisplayFragment mainly
+
 
     @Override
     protected void onCreate(@Nullable Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        setContentView(R.layout.main_activity);
+        setContentView(R.layout.main_activity); // This now loads the layout with TabLayout and ViewPager
 
-        ImageView installedImageView = findViewById(R.id.installed);
-        ImageView linkedImageView = findViewById(R.id.linked);
-        TextView nameTextView = findViewById(R.id.name);
-        ImageView connectedImageView = findViewById(R.id.connected);
-        ImageView controlledImageView = findViewById(R.id.controlled);
-        EditText textInput = (EditText) findViewById(R.id.textBox);
-        Button displayButton = findViewById(R.id.displayTextButton);
-        Button clearButton = findViewById(R.id.clearTextButton);
+        tabLayout = findViewById(R.id.tab_layout);
+        viewPager = findViewById(R.id.view_pager);
 
-        // Load saved text when the activity is created
-        SharedPreferences prefs = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
-        String savedInput = prefs.getString(LAST_INPUT_KEY, ""); // Default to empty string
-        textInput.setText(savedInput);
+        viewPagerAdapter = new ViewPagerAdapter(this);
+        viewPager.setAdapter(viewPagerAdapter);
 
-        // Get the instance of the SDK
-        UltraliteSDK ultralite = UltraliteSDK.get(this);
+        // Link TabLayout with ViewPager2
+        new TabLayoutMediator(tabLayout, viewPager, (tab, position) -> {
+            switch (position) {
+                case 0:
+                    tab.setText("Display");
+                    break;
+                case 1:
+                    tab.setText("Obsi");
+                    break;
+                case 2:
+                    tab.setText("Settings");
+                    break;
+            }
+        }).attach();
 
-        // Now we can use that instance to observe its state, and tie that to our demo app UI
-        ultralite.getAvailable().observe(this, available -> {
-            installedImageView.setImageResource(available ? R.drawable.ic_check_24 : R.drawable.ic_close_24);
-        });
+        // Initialize ViewModel (if it's Activity-scoped)
+        // If your ViewModel is truly Activity-scoped and shared between fragments, this is fine.
+        model = new ViewModelProvider(this).get(DemoActivityViewModel.class);
 
-        ultralite.getLinked().observe(this, linked -> {
-            linkedImageView.setImageResource(linked ? R.drawable.ic_check_24 : R.drawable.ic_close_24);
-            nameTextView.setText(ultralite.getName());
-        });
-
-        ultralite.getConnected().observe(this, connected -> {
-            connectedImageView.setImageResource(connected ? R.drawable.ic_check_24 : R.drawable.ic_close_24);
-            displayButton.setEnabled(connected);
-            clearButton.setEnabled(connected);
-        });
-
-        ultralite.getControlledByMe().observe(this, controlled -> {
-            // Always watch to see if you have lost control to another application. Our ViewModel
-            // observes this in controlledObserver, so this observer is just for the sake of
-            // our UI.
-            controlledImageView.setImageResource(controlled ? R.drawable.ic_check_24 : R.drawable.ic_close_24);
-            nameTextView.setText(ultralite.getName());
-        });
-
-        // For this example we use a ViewModel perform the logic of the test and report its state
-        DemoActivityViewModel model = new ViewModelProvider(this).get(DemoActivityViewModel.class);
-
-        displayButton.setOnClickListener(v -> {
-            String messageToDisplay = textInput.getText().toString();
-
-            // Save the current text to SharedPreferences
-            SharedPreferences.Editor editor = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE).edit();
-            editor.putString(LAST_INPUT_KEY, messageToDisplay);
-            editor.apply(); // Use apply() for asynchronous saving
-            
-            model.displayText(messageToDisplay);
-        });
-        clearButton.setOnClickListener(v -> ultralite.releaseControl());
-
+        // NOTE: All the UI initialization (ImageViews, Buttons, EditText) and their listeners
+        // for the "Display" page should now be in DisplayFragment.java.
+        // The UltraliteSDK observers related to those specific UI elements also move there.
     }
 
+    // sendSampleNotification and DemoActivityViewModel, Stop, loadLVGLImage can remain in MainActivity
+    // if they are general utility or if the ViewModel is activity-scoped.
+    // However, if DemoActivityViewModel is tightly coupled with the "Display" logic,
+    // consider if parts of it should also move or be accessed via the DisplayFragment.
 
-    /**
-     * Sending a notification is by far the simplest mechanism to put content on the glasses.
-     *
-     * By default, the Android app may be listening to notifications from all system apps and
-     * sending it to the glasses. But the user can control this behavior.
-     *
-     * We can programmatically send the same notification to the glasses that does NOT need to notify
-     * the rest of the phone. That's a great way to get content on the screen.
-     *
-     * If nothing has control, the notification shows full-screen.  But if something else has control
-     * this notification may "peek" a shorter version from the top of the screen.
-     *
-     * When you run this demo, try hitting the "send notification" button while the app is idle, and
-     * while a demo is running to see the difference.
-     */
-    private void sendSampleNotification() {
-        UltraliteSDK ultralite = UltraliteSDK.get(this);
-        ultralite.sendNotification("Ultralite SDK Sample", "Hello from a sample app!",
-                loadLVGLImage(this, R.drawable.rocket, false));
-    }
-
-    /**
-     * This ViewModel will hold our state during the demo.
-     */
+    // ... (Your existing DemoActivityViewModel, Stop class, loadLVGLImage method) ...
+    // Make sure DemoActivityViewModel is correctly structured if it's being used by DisplayFragment
     public static class DemoActivityViewModel extends AndroidViewModel {
+        // ... (existing ViewModel code) ...
+        // Ensure methods like displayText are public if called from DisplayFragment
 
         private final UltraliteSDK ultralite;
-
         private final MutableLiveData<Boolean> running = new MutableLiveData<>();
         private boolean haveControlOfGlasses;
+        private String pendingTextToDisplay = null; // Keep if control logic is here
+        private final MutableLiveData<String> glassesBatteryPrefixLiveData = new MutableLiveData<>(""); // Holds "🔋NN% | " or ""
+
 
         public DemoActivityViewModel(@NonNull Application application) {
             super(application);
@@ -144,46 +102,111 @@ public class MainActivity extends AppCompatActivity {
             ultralite.getControlledByMe().observeForever(controlledObserver);
         }
 
-        @Override
-        protected void onCleared() {
-            ultralite.releaseControl();
-            // We can delay removing the observer to allow us to be notified of losing control
-            // Or we could have just set our state from here.
-            new Handler(Looper.getMainLooper()).postDelayed(() ->
-                    ultralite.getControlledByMe().removeObserver(controlledObserver), 500);
+        // Called by DisplayFragment to update the prefix
+        public void updateGlassesBatteryPrefix(String prefix) {
+            glassesBatteryPrefixLiveData.postValue(prefix);
         }
 
-        // We will demonstrate the glasses functionality from a single worker thread. Typically
-        // an application will have other logic that drives the UI, and the Z100 output will be
-        // driven by that.
+        public void clearGlassesBatteryPrefix() {
+            glassesBatteryPrefixLiveData.postValue("");
+        }
 
-        // MY EDITS
-        private void displayText(String text) {
+        // Renamed to avoid confusion with the old displayText
+        public void displayTextOnGlasses(String userMessage) {
+            String batteryPrefix = glassesBatteryPrefixLiveData.getValue() != null ? glassesBatteryPrefixLiveData.getValue() : "";
+            String fullMessage;
+
+            if (batteryPrefix != null && !batteryPrefix.isEmpty()) {
+                // Add newline character if battery prefix exists
+                fullMessage = batteryPrefix.trim() + "\n" + userMessage;
+            } else {
+                fullMessage = userMessage;
+            }
+
+            if (haveControlOfGlasses) {
+                startDisplayFullText(fullMessage);
+            } else {
+                pendingTextToDisplay = userMessage; // Store original user message
+                if (ultralite != null) {
+                    ultralite.requestControl();
+                }
+            }
+        }
+
+        private void startDisplayFullText(String textToDisplayOnGlasses) {
+            new Thread(() -> {
+                if (haveControlOfGlasses && ultralite != null) {
+                    running.postValue(true);
+                    try {
+                        DemoCanvasLayout.runText(getApplication(), this, ultralite, textToDisplayOnGlasses);
+                    } catch (MainActivity.Stop stop) {
+                        // ... (existing error handling) ...
+                    }
+                    running.postValue(false);
+                }
+            }).start();
+        }
+
+        private final Observer<Boolean> controlledObserver = controlled -> {
+            if (controlled) {
+                haveControlOfGlasses = true;
+                if (pendingTextToDisplay != null) {
+                    String batteryPrefix = glassesBatteryPrefixLiveData.getValue() != null ? glassesBatteryPrefixLiveData.getValue() : "";
+                    String messageToSend;
+                    if (batteryPrefix != null && !batteryPrefix.isEmpty()) {
+                        messageToSend = batteryPrefix.trim() + "\n" + pendingTextToDisplay;
+                    } else {
+                        messageToSend = pendingTextToDisplay;
+                    }
+                    startDisplayFullText(messageToSend);
+                    pendingTextToDisplay = null;
+                }
+            } else {
+                haveControlOfGlasses = false;
+                // pendingTextToDisplay = null; // Or keep it to reshow when reconnected
+            }
+        };
+
+        @Override
+        protected void onCleared() {
+            super.onCleared(); // Important to call super
+            if (ultralite != null) {
+                ultralite.releaseControl();
+                // We can delay removing the observer to allow us to be notified of losing control
+                // Or we could have just set our state from here.
+                new android.os.Handler(android.os.Looper.getMainLooper()).postDelayed(() -> {
+                    if (ultralite != null) { // Check again in case it was cleared
+                        ultralite.getControlledByMe().removeObserver(controlledObserver);
+                    }
+                }, 500);
+            }
+        }
+
+        // Make this public if DisplayFragment calls it
+        public void displayText(String text) {
             if (haveControlOfGlasses) {
                 startDisplayText(text);
             } else {
                 pendingTextToDisplay = text;
-                ultralite.requestControl();
+                if (ultralite != null) {
+                    ultralite.requestControl();
+                }
             }
         }
 
-        // You'll need to store the text if control isn't immediately available
-        private String pendingTextToDisplay = null;
-
         private void startDisplayText(String textToDisplay) {
-
             new Thread(() -> {
-                if(haveControlOfGlasses) {
+                if(haveControlOfGlasses && ultralite != null) { // Add null check for ultralite
                     running.postValue(true);
                     try {
+                        // Pass 'this' as the DemoActivityViewModel instance if DemoCanvasLayout needs it
                         DemoCanvasLayout.runText(getApplication(), this, ultralite, textToDisplay);
-
-                    } catch (Stop stop) {
-                        ultralite.releaseControl(); // Release when aborting, too.
+                    } catch (MainActivity.Stop stop) { // Ensure Stop is correctly referenced
+                        if (ultralite != null) ultralite.releaseControl();
                         if (stop.error) {
-                            ultralite.sendNotification("DisplayText Error", "An error occurred.");
+                            if (ultralite != null) ultralite.sendNotification("DisplayText Error", "An error occurred.");
                         } else {
-                            ultralite.sendNotification("DisplayText Lost", "App lost control of the glasses");
+                            if (ultralite != null) ultralite.sendNotification("DisplayText Lost", "App lost control of the glasses");
                         }
                     }
                     running.postValue(false);
@@ -191,43 +214,24 @@ public class MainActivity extends AppCompatActivity {
             }).start();
         }
 
-        // This is a convenience class to pause our thread and generate a Stop exception if the
-        // user wants to abort
-        public void pause() throws Stop {
+        public void pause() throws MainActivity.Stop { // Ensure Stop is correctly referenced
             pause(2000);
         }
 
-        // This is a convenience class to pause our thread and generate a Stop exception if the
-        // user wants to abort
-        public void pause(long ms) throws Stop {
-            SystemClock.sleep(ms);
+        public void pause(long ms) throws MainActivity.Stop { // Ensure Stop is correctly referenced
+            android.os.SystemClock.sleep(ms);
             if (!haveControlOfGlasses) {
-                // Throw Stop when we lose control
-                throw new Stop(false);
+                throw new MainActivity.Stop(false);
             }
         }
 
-        private final Observer<Boolean> controlledObserver = controlled -> {
-            if (controlled) {
-                // We wait to start the demo until the SDK confirms we have received control.
-                haveControlOfGlasses = true;
-                if (pendingTextToDisplay != null) {
-                    startDisplayText(pendingTextToDisplay);
-                    pendingTextToDisplay = null;
-                }
-            } else {
-                // If we later lose control of the glasses we stop the demo. (Your app may choose to
-                // continue running without the glasses UI and wait for them to reconnect to begin,
-                // streaming to them again.).
-                haveControlOfGlasses = false;
-                pendingTextToDisplay = null;
-            }
-        };
+        // Add getter for running LiveData if DisplayFragment needs to observe it
+        public LiveData<Boolean> getRunning() {
+            return running;
+        }
     }
 
-    /**
-     * This exception is our mechanism to detect when the user wants to abort the demo
-     */
+    // Stop class, loadLVGLImage method remain here
     public static class Stop extends Exception {
         private final boolean error;
         public Stop(boolean error) {
@@ -235,17 +239,12 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
-    /**
-     * This is a convenience method to get LVGL images from resources
-     * @param context Application context
-     * @param resource Resource ID of a bitmap
-     * @param singleBit True to render as single-bit (black and white) only. This is the smallest
-     *                  and fastest way to send images. False for 2-bit per pixel.
-     * @return LVGLImage at the original bitmap dimensions
-     */
     static LVGLImage loadLVGLImage(Context context, int resource, boolean singleBit) {
-        BitmapDrawable drawable = (BitmapDrawable) ResourcesCompat.getDrawable(
-                context.getResources(), resource, context.getTheme());
+        // ... (implementation)
+        android.graphics.drawable.BitmapDrawable drawable = (android.graphics.drawable.BitmapDrawable)
+                androidx.core.content.res.ResourcesCompat.getDrawable(
+                        context.getResources(), resource, context.getTheme());
+        if (drawable == null) return null; // Add null check
         int colorSpace = singleBit ? LVGLImage.CF_INDEXED_1_BIT : LVGLImage.CF_INDEXED_2_BIT ;
         return LVGLImage.fromBitmap(drawable.getBitmap(), colorSpace);
     }
