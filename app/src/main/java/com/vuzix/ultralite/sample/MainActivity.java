@@ -2,6 +2,7 @@ package com.vuzix.ultralite.sample;
 
 import android.app.Application;
 import android.content.Context;
+import android.content.SharedPreferences;
 import android.graphics.drawable.BitmapDrawable;
 import android.os.Bundle;
 import android.os.Handler;
@@ -34,8 +35,13 @@ import com.vuzix.ultralite.UltraliteSDK;
  * It also demonstrates sending notifications.
  */
 public class MainActivity extends AppCompatActivity {
-
     protected static final String TAG = MainActivity.class.getSimpleName();
+
+    // SharedPreferences constants
+    public static final String PREFS_NAME = "MyPrefsFile";
+    public static final String LAST_INPUT_KEY = "lastInput";
+
+    private EditText textInput; // Made it a class member to access in listener and onCreate
 
     @Override
     protected void onCreate(@Nullable Bundle savedInstanceState) {
@@ -47,12 +53,14 @@ public class MainActivity extends AppCompatActivity {
         TextView nameTextView = findViewById(R.id.name);
         ImageView connectedImageView = findViewById(R.id.connected);
         ImageView controlledImageView = findViewById(R.id.controlled);
-
-        //MY EDIT
         EditText textInput = (EditText) findViewById(R.id.textBox);
         Button displayButton = findViewById(R.id.displayTextButton);
         Button clearButton = findViewById(R.id.clearTextButton);
-        SeekBar brightnessSeekBar = findViewById(R.id.brightnessSeekBar);
+
+        // Load saved text when the activity is created
+        SharedPreferences prefs = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
+        String savedInput = prefs.getString(LAST_INPUT_KEY, ""); // Default to empty string
+        textInput.setText(savedInput);
 
         // Get the instance of the SDK
         UltraliteSDK ultralite = UltraliteSDK.get(this);
@@ -69,10 +77,6 @@ public class MainActivity extends AppCompatActivity {
 
         ultralite.getConnected().observe(this, connected -> {
             connectedImageView.setImageResource(connected ? R.drawable.ic_check_24 : R.drawable.ic_close_24);
-            demoButton.setEnabled(connected);
-            notificationButton.setEnabled(connected);
-
-            //MY EDIT
             displayButton.setEnabled(connected);
             clearButton.setEnabled(connected);
         });
@@ -88,21 +92,14 @@ public class MainActivity extends AppCompatActivity {
         // For this example we use a ViewModel perform the logic of the test and report its state
         DemoActivityViewModel model = new ViewModelProvider(this).get(DemoActivityViewModel.class);
 
-        // Update our "run" button based on the state of our demo
-        model.running.observe(this, running -> {
-            if (running) {
-                demoButton.setEnabled(false);
-            } else {
-                demoButton.setEnabled(ultralite.isConnected());
-            }
-        });
-
-        // Now set the click listeners to kick-off the two demos
-        demoButton.setOnClickListener(v -> model.runDemo());
-        notificationButton.setOnClickListener(v -> sendSampleNotification() );
-
         displayButton.setOnClickListener(v -> {
             String messageToDisplay = textInput.getText().toString();
+
+            // Save the current text to SharedPreferences
+            SharedPreferences.Editor editor = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE).edit();
+            editor.putString(LAST_INPUT_KEY, messageToDisplay);
+            editor.apply(); // Use apply() for asynchronous saving
+            
             model.displayText(messageToDisplay);
         });
         clearButton.setOnClickListener(v -> ultralite.releaseControl());

@@ -125,7 +125,10 @@
             android:layout_height="159dp"
             android:ems="10"
             android:hint="Text To Display"
-            android:inputType="text"
+            android:inputType="textMultiLine"
+            android:minLines="2"
+            android:maxLines="5"
+            android:gravity="top|start"
             android:outlineAmbientShadowColor="@android:color/darker_gray"
             android:textColor="@android:color/darker_gray" />
 
@@ -141,18 +144,5 @@
             android:layout_height="wrap_content"
             android:text="Clear Text" />
 
-        <TextView
-            android:id="@+id/textView"
-            android:layout_width="172dp"
-            android:layout_height="wrap_content"
-            android:text="Brightness Slider"
-            android:textColor="@android:color/darker_gray" />
-
-        <SeekBar
-            android:id="@+id/brightnessSeekBar"
-            android:layout_width="match_parent"
-            android:layout_height="43dp"
-            android:layout_marginTop="4dp"
-            android:max="100" />
     </LinearLayout>
 </ScrollView>
