@@ -93,7 +93,6 @@ public class MainActivity extends AppCompatActivity {
         private final MutableLiveData<Boolean> running = new MutableLiveData<>();
         private boolean haveControlOfGlasses;
         private String pendingTextToDisplay = null; // Keep if control logic is here
-        private final MutableLiveData<String> glassesBatteryPrefixLiveData = new MutableLiveData<>(""); // Holds "🔋NN% | " or ""
 
 
         public DemoActivityViewModel(@NonNull Application application) {
@@ -102,29 +101,10 @@ public class MainActivity extends AppCompatActivity {
             ultralite.getControlledByMe().observeForever(controlledObserver);
         }
 
-        // Called by DisplayFragment to update the prefix
-        public void updateGlassesBatteryPrefix(String prefix) {
-            glassesBatteryPrefixLiveData.postValue(prefix);
-        }
-
-        public void clearGlassesBatteryPrefix() {
-            glassesBatteryPrefixLiveData.postValue("");
-        }
-
         // Renamed to avoid confusion with the old displayText
         public void displayTextOnGlasses(String userMessage) {
-            String batteryPrefix = glassesBatteryPrefixLiveData.getValue() != null ? glassesBatteryPrefixLiveData.getValue() : "";
-            String fullMessage;
-
-            if (batteryPrefix != null && !batteryPrefix.isEmpty()) {
-                // Add newline character if battery prefix exists
-                fullMessage = batteryPrefix.trim() + "\n" + userMessage;
-            } else {
-                fullMessage = userMessage;
-            }
-
             if (haveControlOfGlasses) {
-                startDisplayFullText(fullMessage);
+                startDisplayFullText(userMessage);
             } else {
                 pendingTextToDisplay = userMessage; // Store original user message
                 if (ultralite != null) {
@@ -151,14 +131,7 @@ public class MainActivity extends AppCompatActivity {
             if (controlled) {
                 haveControlOfGlasses = true;
                 if (pendingTextToDisplay != null) {
-                    String batteryPrefix = glassesBatteryPrefixLiveData.getValue() != null ? glassesBatteryPrefixLiveData.getValue() : "";
-                    String messageToSend;
-                    if (batteryPrefix != null && !batteryPrefix.isEmpty()) {
-                        messageToSend = batteryPrefix.trim() + "\n" + pendingTextToDisplay;
-                    } else {
-                        messageToSend = pendingTextToDisplay;
-                    }
-                    startDisplayFullText(messageToSend);
+                    startDisplayFullText(pendingTextToDisplay);
                     pendingTextToDisplay = null;
                 }
             } else {

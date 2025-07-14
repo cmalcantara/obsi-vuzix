@@ -103,7 +103,6 @@ public class DisplayFragment extends Fragment {
                 startBatteryMonitoringForGlasses(); // Changed method name for clarity
             } else {
                 stopBatteryMonitoringForGlasses();
-                model.clearGlassesBatteryPrefix(); // Tell ViewModel to clear prefix
             }
         });
 
@@ -158,7 +157,6 @@ public class DisplayFragment extends Fragment {
 
                                 // Round to nearest 5% for display if desired, or use actual
                                 // For simplicity, we'll use the actual level if it passes the increment check
-                                model.updateGlassesBatteryPrefix("🔋" + currentBatteryLevel + "% ");
                                 lastReportedBatteryLevelForGlasses = currentBatteryLevel; // Update last reported
                             }
                             batteryUpdateHandler.postDelayed(this, BATTERY_UPDATE_INTERVAL_MS);
@@ -166,7 +164,6 @@ public class DisplayFragment extends Fragment {
                             if (batteryLevelTextView != null) {
                                 batteryLevelTextView.setText("Battery: N/A"); // Handle error case for app UI
                             }
-                            model.clearGlassesBatteryPrefix();
                             // Log.e(TAG, "Error getting battery level", e);
                         }
                     } else {
@@ -174,7 +171,6 @@ public class DisplayFragment extends Fragment {
                         if (batteryLevelTextView != null) {
                             batteryLevelTextView.setText("Battery: --%"); // Reset app UI when not connected
                         }
-                        model.clearGlassesBatteryPrefix();
                     }
                 }
             };
