@@ -56,7 +56,7 @@ public class DemoScrollAutoScroller {
                 try {
                     doneMutex.wait();
                 } catch (Exception e) {
-                    throw new MainActivity.Stop(true);
+                    //throw new MainActivity.Stop(true);
                 }
             }
         }

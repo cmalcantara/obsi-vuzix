@@ -40,4 +40,7 @@ dependencies {
     implementation("com.google.android.material:material:1.11.0")
     implementation("com.vuzix:ultralite-sdk-android:1.7")
     implementation("androidx.fragment:fragment-ktx:1.6.2")
+    implementation("io.noties.markwon:core:4.6.2")
+    implementation("io.noties.markwon:html:4.6.2")
+    implementation("io.noties.markwon:image:4.6.2")
 }

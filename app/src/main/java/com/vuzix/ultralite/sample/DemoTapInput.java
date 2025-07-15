@@ -77,7 +77,7 @@ public class DemoTapInput {
             try {
                 this.wait();   // Block the thread here
             } catch (InterruptedException e) {
-                throw new MainActivity.Stop(true);
+                //throw new MainActivity.Stop(true);
             }
             return userTapCount;
         }

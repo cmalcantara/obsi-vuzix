@@ -83,7 +83,7 @@ public class DemoScrollNative {
             try {
                 eventListener.wait();
             } catch (InterruptedException e) {
-                throw new MainActivity.Stop(true);
+               // throw new MainActivity.Stop(true);
             }
         }
         // And we can unregister the listener now that we're done
