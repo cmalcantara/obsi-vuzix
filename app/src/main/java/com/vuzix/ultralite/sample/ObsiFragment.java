@@ -29,6 +29,11 @@ import java.io.InputStreamReader;
 import java.util.Objects;
 import androidx.lifecycle.ViewModelProvider; // For ViewModel access
 import io.noties.markwon.Markwon;
+import androidx.appcompat.app.AlertDialog;
+import android.util.TypedValue;
+import android.widget.ScrollView;
+import android.widget.LinearLayout;
+import com.vuzix.ultralite.UltraliteSDK;
 
 public class ObsiFragment extends Fragment {
 
@@ -37,9 +42,12 @@ public class ObsiFragment extends Fragment {
     private static final String KEY_MARKDOWN_URI = "markdown_uri";
 
     private Button buttonSelectFile;
+    private Button buttonSendToGlasses;
+    private Button buttonClearGlasses;
+
+    private Button buttonViewFile;
     private TextView textViewMarkdownContent;
     private Markwon markwon;
-    private Button buttonSendToGlasses;
     private MainActivity.DemoActivityViewModel demoActivityViewModel;
     private String currentMarkdownContent = ""; // To store the loaded content
 
@@ -77,14 +85,39 @@ public class ObsiFragment extends Fragment {
     public View onCreateView(@NonNull LayoutInflater inflater, @Nullable ViewGroup container, @Nullable Bundle savedInstanceState) {
         View view = inflater.inflate(R.layout.fragment_obsi, container, false);
 
-        buttonSelectFile = view.findViewById(R.id.buttonSelectFile);
-        textViewMarkdownContent = view.findViewById(R.id.textViewMarkdownContent);
-        buttonSendToGlasses = view.findViewById(R.id.buttonSendToGlasses);
+        buttonSelectFile   = view.findViewById(R.id.buttonSelectFile);
+        buttonSendToGlasses= view.findViewById(R.id.buttonSendToGlasses);
+        buttonClearGlasses = view.findViewById(R.id.buttonClearGlasses);
+        buttonViewFile     = view.findViewById(R.id.buttonViewFile);
 
         buttonSelectFile.setOnClickListener(v -> openFilePicker());
         buttonSendToGlasses.setOnClickListener(v -> sendMarkdownToGlasses());
 
+        UltraliteSDK ultralite = UltraliteSDK.get(requireContext().getApplicationContext());
+        buttonClearGlasses.setOnClickListener(v -> { if (ultralite != null) ultralite.releaseControl(); });
+
+        buttonViewFile.setOnClickListener(v -> showFilePopup());
+
         return view;
+    }
+
+    private void showFilePopup() {
+        if (TextUtils.isEmpty(currentMarkdownContent)) {
+            Toast.makeText(getContext(), "No file loaded.", Toast.LENGTH_SHORT).show();
+            return;
+        }
+        TextView tv = new TextView(requireContext());
+        int pad = (int) TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP,16,getResources().getDisplayMetrics());
+        tv.setPadding(pad,pad,pad,pad);
+        markwon.setMarkdown(tv, currentMarkdownContent);
+
+        ScrollView sv = new ScrollView(requireContext());
+        sv.addView(tv);
+
+        new AlertDialog.Builder(requireContext())
+                .setView(sv)
+                .setPositiveButton("Close", null)
+                .show();
     }
 
     @Override
@@ -132,68 +165,29 @@ public class ObsiFragment extends Fragment {
     }
 
     private void loadSavedMarkdownFile() {
-        Uri savedUri = getSavedMarkdownFileUri();
-        if (savedUri != null) {
-            // Check if we still have permission to read this URI
-            try {
-                // Attempt to open an InputStream to check if permission is still valid
-                InputStream inputStream = requireContext().getContentResolver().openInputStream(savedUri);
-                if (inputStream != null) {
-                    inputStream.close(); // Close it immediately, we just needed to check
-                    Log.d(TAG, "Permission for URI still valid: " + savedUri);
-                    loadAndDisplayMarkdown(savedUri);
-                } else {
-                    Log.w(TAG, "Failed to open input stream for saved URI (permission likely lost): " + savedUri);
-                    clearSavedUriAndInformUser();
-                }
-            } catch (SecurityException e) {
-                Log.e(TAG, "SecurityException loading saved URI (permission lost): " + savedUri, e);
-                clearSavedUriAndInformUser();
-            } catch (IOException e) {
-                Log.e(TAG, "IOException checking saved URI: " + savedUri, e);
-                // Decide if you want to clear or just show an error
-                textViewMarkdownContent.setText("Error checking previously selected file.");
-            }
-        } else {
-            Log.d(TAG, "No saved Markdown URI found.");
-            textViewMarkdownContent.setText("Please select a Markdown file.");
-        }
+        Uri u = getSavedMarkdownFileUri();
+        if (u!=null) loadAndDisplayMarkdown(u);
     }
 
     private void clearSavedUriAndInformUser() {
-        SharedPreferences prefs = requireActivity().getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
-        prefs.edit().remove(KEY_MARKDOWN_URI).apply();
-        textViewMarkdownContent.setText("Permission to access the previously selected file was lost. Please select the file again.");
-        Toast.makeText(getContext(), "Please re-select the Markdown file.", Toast.LENGTH_LONG).show();
+        requireActivity().getSharedPreferences(PREFS_NAME,Context.MODE_PRIVATE)
+                .edit().remove(KEY_MARKDOWN_URI).apply();
+        Toast.makeText(getContext(),"Please re-select the Markdown file.",Toast.LENGTH_LONG).show();
     }
 
-
     private void loadAndDisplayMarkdown(Uri uri) {
-        StringBuilder stringBuilder = new StringBuilder();
-        try (InputStream inputStream = requireContext().getContentResolver().openInputStream(uri);
-             BufferedReader reader = new BufferedReader(new InputStreamReader(Objects.requireNonNull(inputStream)))) {
+        StringBuilder sb = new StringBuilder();
+        try (InputStream is = requireContext().getContentResolver().openInputStream(uri);
+             BufferedReader r = new BufferedReader(new InputStreamReader(Objects.requireNonNull(is)))) {
             String line;
-            while ((line = reader.readLine()) != null) {
-                stringBuilder.append(line).append('\n');
-            }
-            currentMarkdownContent = stringBuilder.toString(); // Store the raw content
-            if (!TextUtils.isEmpty(currentMarkdownContent)) {
-                markwon.setMarkdown(textViewMarkdownContent, currentMarkdownContent); // Display rendered in app
-            } else {
-                currentMarkdownContent = ""; // Clear if empty
-                textViewMarkdownContent.setText("Selected file is empty.");
-            }
-        } catch (IOException e) {
-            Log.e(TAG, "Error reading Markdown file: " + uri.toString(), e);
-            currentMarkdownContent = ""; // Clear on error
-            textViewMarkdownContent.setText("Error reading file: " + e.getMessage());
-            Toast.makeText(getContext(), "Error reading file: " + e.getMessage(), Toast.LENGTH_LONG).show();
-        } catch (SecurityException se) {
-            Log.e(TAG, "SecurityException while reading Markdown file: " + uri.toString(), se);
-            currentMarkdownContent = ""; // Clear on error
-            textViewMarkdownContent.setText("Permission denied. Please re-select the file.");
-            Toast.makeText(getContext(), "Permission denied. Please re-select the file.", Toast.LENGTH_LONG).show();
-            clearSavedUriAndInformUser();
+            while ((line = r.readLine()) != null) sb.append(line).append('\n');
+            currentMarkdownContent = sb.toString();
+            if (currentMarkdownContent.isEmpty())
+                Toast.makeText(getContext(),"Selected file is empty.",Toast.LENGTH_SHORT).show();
+        } catch (Exception e) {
+            currentMarkdownContent = "";
+            Toast.makeText(getContext(),"Error reading file: "+e.getMessage(),Toast.LENGTH_LONG).show();
+            Log.e(TAG,"Err reading md",e);
         }
     }
 

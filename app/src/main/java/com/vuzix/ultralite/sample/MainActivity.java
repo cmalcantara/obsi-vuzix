@@ -44,6 +44,15 @@ public class MainActivity extends AppCompatActivity {
     protected void onCreate(@Nullable Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.main_activity); // Should contain R.id.tab_layout and R.id.view_pager
+        setContentView(R.layout.main_activity);
+        if (getSupportActionBar() != null) getSupportActionBar().hide(); // hide header
+
+        ViewPager2 viewPager = findViewById(R.id.view_pager);
+        viewPager.setAdapter(new ViewPagerAdapter(this));
+
+        model = new ViewModelProvider(this).get(DemoActivityViewModel.class);
+
+        /*
 
         tabLayout = findViewById(R.id.tab_layout);
         viewPager = findViewById(R.id.view_pager);
@@ -71,6 +80,9 @@ public class MainActivity extends AppCompatActivity {
 
         // Initialize ViewModel
         model = new ViewModelProvider(this).get(DemoActivityViewModel.class);
+
+
+         */
 
         // Any observers for LiveData from the ViewModel that affect MainActivity directly
         // would be set up here. For example, if 'running' status changed something in MainActivity's UI.
