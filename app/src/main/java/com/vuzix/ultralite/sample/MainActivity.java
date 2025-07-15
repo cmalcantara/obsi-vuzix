@@ -226,21 +226,13 @@ public class MainActivity extends AppCompatActivity {
                             startingLineIndex, numSlicesVisible, textPaint);
                     Log.w(VM_TAG, markdownContent);
 
-
-                    //Preprocessing to work properly in displaying to the device
-                    // 1. Split on line breaks (handles both "\n" and "\r\n")
-                    String[] lines = markdownContent.split("\\r?\\n");
-
-                    // 2. Clean up each line: collapse horizontal whitespace, then trim
+                    String[] lines = fullText.split("\\r?\\n");
+                    int digits = String.valueOf(lines.length).length();
                     for (int i = 0; i < lines.length; i++) {
-                        // \\s matches all whitespace (incl. newlines), so instead
-                        // use \\h (horizontal whitespace) or explicit [ \\t\\f\\r]
-                        lines[i] = lines[i]
-                                .replaceAll("\\h+", " ")  // collapse spaces, tabs, etc., but NOT newlines
-                                .trim();
+                        lines[i] = String.format("%" + digits + "d    %s",
+                                i + 1,
+                                lines[i].replaceAll("\\h+", " ").trim());
                     }
-
-                    // 3. Re-join with a single "\n" to restore line breaks
                     markdownContent = String.join("\n", lines);
 
                     liveTextSender.sendText(markdownContent);
