@@ -1,5 +1,7 @@
 package com.vuzix.ultralite.sample;
 
+import java.util.*;
+
 // AndroidX and Material Design Imports
 import android.app.Application;
 import android.content.Context;
@@ -26,6 +28,11 @@ import com.vuzix.ultralite.LVGLImage;
 import com.vuzix.ultralite.Layout;
 import com.vuzix.ultralite.UltraliteSDK;
 import com.vuzix.ultralite.utils.scroll.LiveText;
+import com.vuzix.ultralite.UltraliteSDK.Canvas;
+import com.vuzix.ultralite.Anchor;
+import com.vuzix.ultralite.TextAlignment;
+import com.vuzix.ultralite.TextWrapMode;
+import com.vuzix.ultralite.UltraliteColor;
 
 
 public class MainActivity extends AppCompatActivity {
@@ -43,49 +50,19 @@ public class MainActivity extends AppCompatActivity {
     @Override
     protected void onCreate(@Nullable Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        setContentView(R.layout.main_activity); // Should contain R.id.tab_layout and R.id.view_pager
         setContentView(R.layout.main_activity);
-        if (getSupportActionBar() != null) getSupportActionBar().hide(); // hide header
+        if (getSupportActionBar()!=null) getSupportActionBar().hide();
 
-        ViewPager2 viewPager = findViewById(R.id.view_pager);
+        TabLayout tabLayout   = findViewById(R.id.tab_layout);
+        ViewPager2 viewPager  = findViewById(R.id.view_pager);
         viewPager.setAdapter(new ViewPagerAdapter(this));
+        viewPager.setUserInputEnabled(false); // disable swipe
 
-        model = new ViewModelProvider(this).get(DemoActivityViewModel.class);
-
-        /*
-
-        tabLayout = findViewById(R.id.tab_layout);
-        viewPager = findViewById(R.id.view_pager);
-
-        // Make sure ViewPagerAdapter is correctly instantiated
-        ViewPagerAdapter viewPagerAdapter = new ViewPagerAdapter(this);
-        viewPager.setAdapter(viewPagerAdapter);
-
-        new TabLayoutMediator(tabLayout, viewPager, (tab, position) -> {
-            switch (position) {
-                case 0:
-                    tab.setText("Display");
-                    break;
-                case 1:
-                    tab.setText("Obsi");
-                    break;
-                case 2:
-                    tab.setText("Settings");
-                    break;
-                default:
-                    // Optional: handle unexpected positions
-                    break;
-            }
+        new TabLayoutMediator(tabLayout, viewPager, (tab,pos)->{
+            tab.setText(pos==0?"Display":pos==1?"Obsi":"Settings");
         }).attach();
 
-        // Initialize ViewModel
         model = new ViewModelProvider(this).get(DemoActivityViewModel.class);
-
-
-         */
-
-        // Any observers for LiveData from the ViewModel that affect MainActivity directly
-        // would be set up here. For example, if 'running' status changed something in MainActivity's UI.
     }
 
     // MainActivity is now much cleaner. It only handles its own UI setup.
@@ -102,6 +79,14 @@ public class MainActivity extends AppCompatActivity {
         private final MutableLiveData<Boolean> running = new MutableLiveData<>(false); // Default to false
         private boolean haveControlOfGlasses = false;
         private String pendingTextToDisplay = null;
+        private volatile LiveText activeLiveText;
+        private List<String> cachedLines = new ArrayList<>();
+        private int currentStartLine = 0;
+        private final int numVisible = 8;
+        private static final int LINE_HEIGHT_PX = 30;
+        private Canvas canvas;
+        private final List<Integer> canvasTextIds = new ArrayList<>();
+        private boolean canvasMode = false;
 
         private final Observer<Boolean> controlledObserver = controlled -> {
             Log.d(VM_TAG, "Controlled by me: " + controlled);
@@ -194,127 +179,99 @@ public class MainActivity extends AppCompatActivity {
         /**
          * Displays a large block of scrollable text on the glasses using LiveText.
          */
-        public void displayScrollableTextOnGlasses(String fullText) {
-            if (fullText == null || fullText.isEmpty()) {
-                Log.d(VM_TAG, "Scrollable text is empty, not sending.");
+        public void displayScrollableTextOnGlasses(@NonNull String fullText) {
+            if(fullText.isEmpty()) return;
+            if(!requestControlIfNeeded()) {    // ask Bluetooth chip for control
+                Log.w(VM_TAG,"Control not yet granted – user must retry");
                 return;
             }
-
-            if (!requestControlIfNeeded()) {
-                Log.w(VM_TAG, "LiveText: Could not gain control. Queuing or failing is an option.");
-                // For this example, we'll just log and not proceed if initial requestControl fails
-                // A more robust solution might queue this action like pendingTextToDisplay
-                return;
-            }
-            // If control is pending, subsequent calls might fail. For LiveText, better to wait for haveControlOfGlasses
-            if (!haveControlOfGlasses) {
-                Log.w(VM_TAG, "LiveText: Control not yet confirmed. Consider queuing this operation.");
-                // Store as a different type of pending action if needed, or rely on user retrying.
-                return;
-            }
-
-            new Thread(() -> {
-                if (!haveControlOfGlasses) { // Re-check before starting thread work
-                    Log.w(VM_TAG, "LiveText: Lost control before starting.");
-                    running.postValue(false);
-                    return;
-                }
-
-                running.postValue(true); // Indicate activity
-                Log.d(VM_TAG, "Starting displayScrollableTextOnGlasses (line-by-line).");
-                LiveText liveTextSender = null;
-
-                String markdownContent = fullText;
-
-                try {
-                    int lineHeight = 30; //[30-120]
-                    int lineWidth = 640; //[30-640]
-                    int startingLineIndex = 0; //Range: [ 0 - ((480/lineHeight)-1)]
-                    int numSlicesVisible = 8; //Min=1. Max=((480/lineHeight)-startingLineIndex).
-                    final android.text.TextPaint textPaint = null; //default textPaint
-
-                    ultralite.setLayout(Layout.SCROLL, 0, true, true, 0);
-                    liveTextSender = new LiveText(ultralite, lineHeight, lineWidth,
-                            startingLineIndex, numSlicesVisible, textPaint);
-                    Log.w(VM_TAG, markdownContent);
-
-                    String[] lines = fullText.split("\\r?\\n");
-                    int digits = String.valueOf(lines.length).length();
-                    for (int i = 0; i < lines.length; i++) {
-                        lines[i] = String.format("%" + digits + "d    %s",
-                                i + 1,
-                                lines[i].replaceAll("\\h+", " ").trim());
-                    }
-                    markdownContent = String.join("\n", lines);
-
-                    liveTextSender.sendText(markdownContent);
-
-                    /*
-                    // Split the fullText into lines
-                    String[] lines = textB.split("\\r?\\n"); // Handles both \n and \r\n
-                    String currentTextToSend = "";
-                    int lineCount = 0;
-
-
-                    for (String line : lines) {
-                        if (!haveControlOfGlasses) { // Check control before each send
-                            Log.w(VM_TAG, "LiveText (line-by-line): Lost control during sending lines.");
-                            throw new Stop(false, "Control lost while sending lines");
-                        }
-
-                        // Append lines together, similar to DemoScrollLiveText
-                        currentTextToSend += line + "\n"; // Add newline back for proper formatting by LiveText
-
-                        // --- CRITICAL CHANGE ---
-                        // Send the *accumulated* text so LiveText can manage the diff
-                        Log.w(VM_TAG, "just before sending first line");
-                        currentTextToSend = currentTextToSend
-                                .replaceAll("\\s+", " ")
-                                .trim();
-                        Log.w(VM_TAG, currentTextToSend);
-                        liveTextSender.sendText(currentTextToSend);
-
-                        lineCount++;
-                        Log.d(VM_TAG, "LiveText: Sent line " + lineCount + ". Total length: " + currentTextToSend.length());
-
-                        // Optional: Add a small delay to simulate real-time data and observe
-                        // Be careful with Thread.sleep on the main thread if this wasn't on a background thread.
-                        // Since this is already in a new Thread, it's okay here.
-                        try {
-                            Thread.sleep(100); // 100ms delay between sending lines - adjust as needed for testing
-                        } catch (InterruptedException ie) {
-                            Thread.currentThread().interrupt();
-                            Log.w(VM_TAG, "Line sending delay interrupted.");
-                            break; // Exit loop if interrupted
+            // Wait until we really have control
+            if(!haveControlOfGlasses) {
+                ultralite.getControlledByMe().observeForever(new Observer<Boolean>() {
+                    @Override public void onChanged(Boolean b) {
+                        if(Boolean.TRUE.equals(b)) {
+                            ultralite.getControlledByMe().removeObserver(this);
+                            displayScrollableTextOnGlasses(fullText);  // recurse now that control is ours
                         }
                     }
-                    */
-
-
-                    Log.d(VM_TAG, "LiveText: Finished sending all lines.");
-
-                    // LiveText typically stays active until cleared or layout changes.
-                    // User scrolls on the device. No need for Thread.sleep here usually.
-
-                } catch (IllegalArgumentException iae) { // Catch the numSlicesVisible error specifically
-                    Log.e(VM_TAG, "LiveText (line-by-line) Setup Error: " + iae.getMessage(), iae);
-                    if (ultralite != null) ultralite.sendNotification("App Error", "LiveText Setup. Check numSlices", null, "LTSERR", null);
-                } catch (Exception e) { // Catch other exceptions, including StringIndexOutOfBoundsException
-                    Log.e(VM_TAG, "Error during line-by-line LiveText operation: " + e.getMessage(), e);
-                    if (ultralite != null) {
-                        ultralite.sendNotification("App Error", "LiveText Send. Check Logs.", null, "LiveText Send Err", null);
-                    }
-                } finally {
-                    running.postValue(false);
-                    // Optional: Decide if/when to clear the LiveText display.
-                    // For this test, you might leave it to see the final result.
-                    // To clear:
-                    // if (ultralite != null && haveControlOfGlasses && liveTextSender != null) {
-                    //     ultralite.clearDisplay(Layout.SCROLL.getGroup()); // Or liveTextSender.clear() if available
-                    // }
-                }
-            }).start();
+                });
+                return;
+            }
+            // We own the glasses – build the canvas on the UI thread
+            new Handler(Looper.getMainLooper()).post(() -> prepareCanvas(fullText));
         }
+
+        /* ========== 2.  Canvas builder – runs on UI thread ========== */
+        private void prepareCanvas(@NonNull String src) {
+            try {
+                ultralite.setLayout(Layout.CANVAS, /*timeout*/0, true, true, 0);
+                canvas      = ultralite.getCanvas();
+                canvasMode  = true;
+                canvas.clearBackground(UltraliteColor.BLACK);
+
+                // ---------- format lines ----------
+                String[] raw = src.split("\\r?\\n");
+                int digits   = String.valueOf(raw.length).length();
+                cachedLines  = new ArrayList<>(raw.length);
+                for(int i=0;i<raw.length;i++)
+                    cachedLines.add(String.format("%"+digits+"d   %s", i+1,
+                            raw[i].replaceAll("\\h+", " ").trim()));
+
+                // ---------- draw first window ----------
+                canvasTextIds.clear();
+                currentStartLine = 0;
+                int y            = 0;
+                int winMax       = Math.min(numVisible, cachedLines.size());
+
+                for(int i=0;i<winMax;i++, y+=LINE_HEIGHT_PX) {
+                    int id = canvas.createText(
+                            cachedLines.get(i),
+                            TextAlignment.LEFT,
+                            UltraliteColor.WHITE,
+                            Anchor.TOP_LEFT,
+                            0, y,
+                            Canvas.WIDTH,
+                            LINE_HEIGHT_PX,
+                            TextWrapMode.CLIP,
+                            /*visible*/true);
+                    canvasTextIds.add(id);
+                }
+                canvas.commit(null);
+                Log.i(VM_TAG,"Canvas initialised with "+winMax+" lines");
+            } catch(Exception e) {
+                Log.e(VM_TAG,"prepareCanvas failed",e);
+                canvasMode=false;
+            }
+        }
+
+
+        /* ========== 3.  Smooth line-by-line scroll & edit ========== */
+        public void scrollLines(int delta) {
+            if(!canvasMode || canvas==null) return;
+            int newStart = Math.max(0,
+                    Math.min(currentStartLine + delta, cachedLines.size() - numVisible));
+            if(newStart == currentStartLine) return;   // reached top/bottom
+            currentStartLine = newStart;
+
+            for(int i=0;i<canvasTextIds.size();i++) {
+                int idx  = currentStartLine + i;
+                String s = idx < cachedLines.size() ? cachedLines.get(idx) : "";
+                canvas.updateText(canvasTextIds.get(i), s);
+            }
+            canvas.commit(null);
+        }
+
+        /* Call this whenever phone-side editor mutates a single line: */
+        public void replaceLine(int zeroBasedIndex, @NonNull String newContent) {
+            if(zeroBasedIndex<0 || zeroBasedIndex>=cachedLines.size()) return;
+            cachedLines.set(zeroBasedIndex, newContent);
+            int relative = zeroBasedIndex - currentStartLine;   // is it visible?
+            if(relative>=0 && relative<canvasTextIds.size()) {
+                canvas.updateText(canvasTextIds.get(relative), newContent);
+                canvas.commit(null);
+            }
+        }
+
 
         /**
          * Pauses execution for a specified duration, throwing Stop if control is lost.

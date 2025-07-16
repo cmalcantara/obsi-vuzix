@@ -9,7 +9,11 @@
         <Button
             android:id="@+id/buttonSelectFile"
             android:layout_width="0dp" android:layout_height="wrap_content"
-            android:layout_weight="1" android:text="Select File"/>
+            android:layout_weight="1" android:text="File"/>
+        <Button
+            android:id="@+id/buttonViewFile"
+            android:layout_width="0dp" android:layout_height="wrap_content"
+            android:layout_weight="1" android:text="View"/>
 
         <Button
             android:id="@+id/buttonSendToGlasses"
@@ -20,10 +24,17 @@
             android:id="@+id/buttonClearGlasses"
             android:layout_width="0dp" android:layout_height="wrap_content"
             android:layout_weight="1" android:text="Clear"/>
-
-        <Button
-            android:id="@+id/buttonViewFile"
-            android:layout_width="0dp" android:layout_height="wrap_content"
-            android:layout_weight="1" android:text="View"/>
     </LinearLayout>
+    <FrameLayout
+        android:id="@+id/gestureArea"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1">
+
+        <View
+            android:id="@+id/pointer"
+            android:layout_width="match_parent"
+            android:layout_height="3dp"
+            android:background="@android:color/holo_red_dark"/>
+    </FrameLayout>
 </LinearLayout>

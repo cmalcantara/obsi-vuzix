@@ -15,6 +15,10 @@ import android.view.ViewGroup;
 import android.widget.Button;
 import android.widget.TextView;
 import android.widget.Toast;
+import android.view.GestureDetector;
+import android.view.MotionEvent;
+import android.view.View;
+import android.view.View.OnTouchListener;
 
 import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.contract.ActivityResultContracts;
@@ -50,6 +54,13 @@ public class ObsiFragment extends Fragment {
     private Markwon markwon;
     private MainActivity.DemoActivityViewModel demoActivityViewModel;
     private String currentMarkdownContent = ""; // To store the loaded content
+
+    private View pointer;
+    private GestureDetector gestureDetector;
+    private static final String GESTURE_TAG = "GestureDebug";
+
+    private int pointerPos=0;
+    private static final int LINE_HEIGHT_PX=30; // same as ViewModel
 
 
     // ActivityResultLauncher for the file picker
@@ -89,16 +100,50 @@ public class ObsiFragment extends Fragment {
         buttonSendToGlasses= view.findViewById(R.id.buttonSendToGlasses);
         buttonClearGlasses = view.findViewById(R.id.buttonClearGlasses);
         buttonViewFile     = view.findViewById(R.id.buttonViewFile);
+        pointer       = view.findViewById(R.id.pointer);
+        View gesture  = view.findViewById(R.id.gestureArea);
 
         buttonSelectFile.setOnClickListener(v -> openFilePicker());
         buttonSendToGlasses.setOnClickListener(v -> sendMarkdownToGlasses());
-
         UltraliteSDK ultralite = UltraliteSDK.get(requireContext().getApplicationContext());
         buttonClearGlasses.setOnClickListener(v -> { if (ultralite != null) ultralite.releaseControl(); });
-
         buttonViewFile.setOnClickListener(v -> showFilePopup());
 
+        // --- gesture plumbing with verbose logs ---
+        final float[] accum = {0f};                      // accumulates dy
+        gestureDetector = new GestureDetector(requireContext(),
+                new GestureDetector.SimpleOnGestureListener() {
+
+                    @Override public boolean onDown(MotionEvent e) {          // fire so onScroll can happen
+                        Log.d(GESTURE_TAG, "onDown  x=" + e.getX() + " y=" + e.getY());
+                        return true;
+                    }
+
+                    @Override public boolean onScroll(MotionEvent e1, MotionEvent e2,
+                                                      float dx, float dy) {
+                        accum[0] += dy;                                      // dy >0 means finger moves ↓
+                        int linesMoved = 0;
+                        while (Math.abs(accum[0]) >= LINE_HEIGHT_PX) {       // move 1 line per 30 px
+                            linesMoved += (accum[0] > 0 ? 1 : -1);
+                            accum[0]  += (accum[0] > 0 ? -LINE_HEIGHT_PX : LINE_HEIGHT_PX);
+                        }
+                        if (linesMoved != 0) {
+                            Log.i(GESTURE_TAG, "scroll dy=" + dy + "  → linesMoved=" + linesMoved);
+                            movePointer(linesMoved * LINE_HEIGHT_PX);
+                            demoActivityViewModel.scrollLines(linesMoved);
+                        }
+                        return true;
+                    }
+                });
+        gesture.setOnTouchListener((v, ev)->gestureDetector.onTouchEvent(ev));
+
+
         return view;
+    }
+
+    private void movePointer(int dy){
+        pointerPos=Math.max(0,pointerPos+dy);
+        pointer.setTranslationY(pointerPos);
     }
 
     private void showFilePopup() {
